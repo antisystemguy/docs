@@ -1,0 +1,191 @@
+openapi: 3.0.1
+info:
+  title: Mobile Payment Deep Link API
+  version: 1.0.0
+  description: API для генерации deeplink-ссылок для различных банков на основе типа действия и платформы пользователя
+paths:
+  /deeplink:
+    post:
+      summary: Обработка действий для генерации deeplink-ссылок
+      description: Эндпоинт работает только с мобильных устройств (в ином случае выдается сообщение "This service is only available on mobile devices" с параметром success = "false") На основании параметра `action` выполняется генерация ссылок.
+
+      parameters:
+        - name: User-Agent
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Заголовок для определения платформы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/TinkoffDeeplinkRequest'
+                - $ref: '#/components/schemas/TinkoffFallbackRequest'
+                - $ref: '#/components/schemas/SberbankCardRequest'
+                - $ref: '#/components/schemas/SberbankPhoneRequest'
+                - $ref: '#/components/schemas/SberbankForeignRequest'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeeplinkResponse'
+              examples:
+                tinkoff-ios:
+                  summary: Успешный ответ для Tinkoff на iOS
+                  value:
+                    success: true
+                    message: Generated Tinkoff deep links
+                    urls:
+                      - "[bundle_id]://Main/PayByMobileNumber?numberPhone=[encoded_phone]&amount=[amount]&bankMemberId=[bank_id]&workflowType=RTLNTransfer"  
+                tinkoff-android:
+                  summary: Успешный ответ для Tinkoff на Android
+                  value:
+                    success: true
+                    message: Generated Tinkoff deep links
+                    urls:
+                      - "[bundle_id]://Main/PayByMobileNumber?numberPhone=[encoded_phone]&amount=[amount]&bankMemberId=[bank_id]&workflowType=RTLNTransfer" 
+                tinkoff-fallback:
+                  summary: Fallback-ссылка Tinkoff
+                  value:
+                    success: true
+                    message: Generated Tinkoff fallback URL
+                    urls:
+                      - "https://www.tinkoff.ru/payments/c2c/?amount=[amount]&accountNumber=[phone]"
+                sberbank-card-ios:
+                  summary: Sberbank перевод по карте (iOS)
+                  value:
+                    success: true
+                    message: Generated Sberbank card deep links
+                    urls:
+                      - "[bundle_id]://p2ptransfer?amount=[amount].0&isNeedToOpenNextScreen=false&skipContactsScreen=true&to=[card]&type=card"
+                sberbank-card-android:
+                  summary: Sberbank перевод по карте (Android)
+                  value:
+                    success: true
+                    message: Generated Sberbank card deep links
+                    urls:
+                      - intent://[bundle_id]/payments/p2p?requisiteNumber=[card]&type=card_number#Intent;scheme=android-app;end
+                sberbank-phone-ios:
+                  summary: Sberbank перевод по телефону (iOS)
+                  value:
+                    success: true
+                    message: Generated Sberbank phone deep links
+                    urls:
+                      - "[bundle_id]://sbolonline/transfers/overseas/search?source=QR&phoneNumber=%2B[phone]"
+                sberbank-phone-android:
+                  summary: Sberbank перевод по телефону (Android)
+                  value:
+                    success: true
+                    message: Generated Sberbank phone deep links
+                    urls:
+                      - intent://[bundle_id]/payments/overseas?phoneNumber=%2B[phone]#Intent;scheme=android-app;end
+                sberbank-foreign-ios:
+                  summary: Sberbank перевод на иностранный банк (iOS)
+                  value:
+                    success: true
+                    message: Generated Sberbank foreign bank deep links
+                    urls:
+                      - "[bundle_id]://sbolonline/abroadtransfers/foreignbank"
+                sberbank-foreign-android:
+                  summary: Sberbank перевод на иностранный банк (Android)
+                  value:
+                    success: true
+                    message: Generated Sberbank foreign bank deep links
+                    urls:
+                      - intent://[bundle_id]/payments/foreign_bank#Intent;scheme=android-app;end
+                error-desktop:
+                  summary: Ошибка на десктопе
+                  value:
+                    success: false
+                    message: This service is only available on mobile devices
+                    urls: []
+components:
+  schemas:
+    DeeplinkResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        urls:
+          type: array
+          items:
+            type: string
+    TinkoffDeeplinkRequest:
+      type: object
+      required:
+        - action
+        - phone
+        - amount
+        - bankCode
+      properties:
+        action:
+          type: string
+          enum: [tinkoff_deeplinks]
+        phone:
+          type: string
+          example: "+79001233211"
+        amount:
+          type: number
+          example: 1000
+        bankCode:
+          type: string
+          example: a_mobile
+    TinkoffFallbackRequest:
+      type: object
+      required:
+        - action
+        - phone
+        - amount
+      properties:
+        action:
+          type: string
+          enum: [tinkoff_fallback]
+        phone:
+          type: string
+          example: "+79001233211"
+        amount:
+          type: number
+          example: 1000
+    SberbankCardRequest:
+      type: object
+      required:
+        - action
+        - card
+        - amount
+      properties:
+        action:
+          type: string
+          enum: [sberbank_card]
+        card:
+          type: string
+          example: "4276123456789012"
+        amount:
+          type: number
+          example: 2500
+    SberbankPhoneRequest:
+      type: object
+      required:
+        - action
+        - phone
+      properties:
+        action:
+          type: string
+          enum: [sberbank_phone]
+        phone:
+          type: string
+          example: "+79001233211"
+    SberbankForeignRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [sberbank_foreign]
